@@ -86,7 +86,7 @@
     </div>
     <div class="main-card">
         <div id="prepSection" class="content-section active">
-            <p style="font-size: 12px; color: #a4b0be; font-weight: 800; margin-bottom: 20px;">点击麦克风练习并获取评分：</p>
+            <p style="font-size: 12px; color: #a4b0be; font-weight: 800; margin-bottom: 20px;">点击喇叭听云端发音，点击话筒练习：</p>
             <div id="prepList"></div>
         </div>
         <div id="challengeSection" class="content-section">
@@ -119,44 +119,53 @@
 </div>
 <script>
     const database = [
-        { // Scene 1
+        { 
             prep: [{en:"Excuse me, where is the restroom?",cn:"洗手间在哪里？",key:"restroom"},{en:"How do I get to the museum?",cn:"去博物馆怎么走？",key:"museum"},{en:"Is it far from here?",cn:"离这儿远吗？",key:"far"}],
             steps: [{ai:"Welcome! Looking for a specific gallery?",aiCN:"欢迎！在找展厅吗？",target:"Excuse me, where is the restroom?",targetCN:"洗手间在哪？",keys:["restroom"]},{ai:"Near the exit. Need a map?",aiCN:"出口附近。要地图吗？",target:"Yes, and how do I get to the cafe?",targetCN:"去咖啡馆怎么走？",keys:["cafe"]},{ai:"Straight for two blocks.",aiCN:"直走两个街区。",target:"Thank you for your help!",targetCN:"谢谢你的帮助！",keys:["thank"]}]
         },
-        { // Scene 2
+        { 
             prep: [{en:"A table for two, please.",cn:"请给两人位。",key:"table"},{en:"Can I see the menu?",cn:"能看菜单吗？",key:"menu"},{en:"Check, please.",cn:"请结账。",key:"check"}],
             steps: [{ai:"Do you have a reservation?",aiCN:"有预约吗？",target:"No, a table for two, please.",targetCN:"没有，两人位谢谢。",keys:["table"]},{ai:"Ready to order?",aiCN:"准备好点餐了吗？",target:"I'll have the grilled salmon.",targetCN:"我要一份煎三文鱼。",keys:["salmon"]},{ai:"Anything else?",aiCN:"还要别的吗？",target:"No, that's all. Check, please.",targetCN:"就这些，结账。",keys:["check"]}]
         },
-        { // Scene 3
+        { 
             prep: [{en:"I'd like to check in, please.",cn:"我想办理入住。",key:"check"},{en:"Is breakfast included?",cn:"含早餐吗？",key:"breakfast"},{en:"What's the Wi-Fi password?",cn:"Wi-Fi密码是多少？",key:"password"}],
             steps: [{ai:"May I have your passport?",aiCN:"请给我护照好吗？",target:"Here it is. I'd like to check in.",targetCN:"给你，办入住。",keys:["check"]},{ai:"Room 502. Here is your key.",aiCN:"502房。这是钥匙。",target:"Thanks. Is breakfast included?",targetCN:"含早餐吗？",keys:["breakfast"]},{ai:"Yes, 7 to 10 AM.",aiCN:"是的，7点到10点。",target:"What's the Wi-Fi password?",targetCN:"Wi-Fi密码是多少？",keys:["password"]}]
         },
-        { // Scene 4
+        { 
             prep: [{en:"How much is this?",cn:"这个多少钱？",key:"much"},{en:"Do you have a smaller size?",cn:"有小一号吗？",key:"smaller"},{en:"Can I get a tax refund?",cn:"能退税吗？",key:"tax"}],
             steps: [{ai:"Can I help you find anything?",aiCN:"需要帮您找什么吗？",target:"I am looking for a gift.",targetCN:"我在挑一件礼物。",keys:["looking"]},{ai:"This is 200 dollars.",aiCN:"这个200美金。",target:"It's nice. Can I get a tax refund?",targetCN:"能退税吗？",keys:["tax"]},{ai:"Yes, anything else?",aiCN:"可以的，还要别的吗？",target:"No, I'll take this one.",targetCN:"不，我要这个。",keys:["take"]}]
         },
-        { // Scene 5
+        { 
             prep: [{en:"Where is the check-in counter?",cn:"值机柜台在哪？",key:"counter"},{en:"I have a bag to check.",cn:"我有行李托运。",key:"check"},{en:"Is my flight on time?",cn:"航班准点吗？",key:"time"}],
             steps: [{ai:"Where are you flying?",aiCN:"您飞往哪里？",target:"To London. I have a bag to check.",targetCN:"去伦敦，托运行李。",keys:["london"]},{ai:"Window or aisle seat?",aiCN:"靠窗还是过道？",target:"Window seat, please.",targetCN:"靠窗位，谢谢。",keys:["window"]},{ai:"Gate 12. Have a nice flight!",aiCN:"12号登机口。旅途愉快！",target:"Thank you. Where is gate 12?",targetCN:"谢谢，12号登机口在哪？",keys:["gate"]}]
         }
     ];
+
     let currentScene = 0, currentStep = 0;
-    const synth = window.speechSynthesis, SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    // 【核心改动】：使用全局 Audio 对象，调用有道云网络发音接口
+    const globalAudioPlayer = new Audio();
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+
     function initApp() {
-        currentScene = document.getElementById('sceneSelector').value; currentStep = 0;
+        currentScene = document.getElementById('sceneSelector').value; 
+        currentStep = 0;
         document.getElementById('finishUI').style.display = 'none';
         document.getElementById('prepSection').classList.add('active');
         document.getElementById('challengeSection').classList.remove('active');
         renderPrep(); renderChallenge();
     }
+
     function renderPrep() {
         const list = document.getElementById('prepList'); list.innerHTML = '';
         database[currentScene].prep.forEach((item, idx) => {
             const div = document.createElement('div'); div.className = 'phrase-item';
-            div.innerHTML = `<div class="phrase-main">${item.en}</div><div class="phrase-sub">${item.cn}</div><div class="btn-group"><button class="btn-sm btn-listen" onclick="speakSingle('${item.en}')">🔊 示范</button><button id="prepBtn_${idx}" class="btn-sm btn-rec-sm" onclick="handleMic('prep', ${idx})">🎤 评分</button></div><div id="prepScore_${idx}" class="score-box"></div>`;
+            // 注意：预习发音传 false（使用美音）
+            div.innerHTML = `<div class="phrase-main">${item.en}</div><div class="phrase-sub">${item.cn}</div><div class="btn-group"><button class="btn-sm btn-listen" onclick="speakCloud('${item.en}', false)">🔊 示范</button><button id="prepBtn_${idx}" class="btn-sm btn-rec-sm" onclick="handleMic('prep', ${idx})">🎤 评分</button></div><div id="prepScore_${idx}" class="score-box"></div>`;
             list.appendChild(div);
         });
     }
+
     function renderChallenge() {
         const step = database[currentScene].steps[currentStep];
         document.getElementById('stepInfo').innerText = `STAGE ${currentStep + 1} / ${database[currentScene].steps.length}`;
@@ -166,19 +175,38 @@
         document.getElementById('nextBtn').style.display = 'none'; document.getElementById('recBtnChallenge').style.display = 'block';
         document.getElementById('progressFill').style.width = (currentStep / database[currentScene].steps.length * 100) + "%";
     }
+
     function switchMode(m) {
         document.getElementById('tabPrep').classList.toggle('active', m === 'prep');
         document.getElementById('tabChallenge').classList.toggle('active', m === 'challenge');
         document.getElementById('prepSection').classList.toggle('active', m === 'prep');
         document.getElementById('challengeSection').classList.toggle('active', m === 'challenge');
     }
-    function speakSingle(text) { synth.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; u.rate = 0.8; synth.speak(u); }
-    function playVoice(type) { const s = database[currentScene].steps[currentStep]; speakSingle(type === 'ai' ? s.ai : s.target); }
+
+    // 【全新云端发音函数】绕过手机限制
+    function speakCloud(text, isBritish = false) {
+        // type=1是英音，type=2是美音
+        const accentType = isBritish ? 1 : 2; 
+        const url = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&type=${accentType}`;
+        globalAudioPlayer.src = url;
+        globalAudioPlayer.play().catch(e => {
+            alert("声音被拦截：请确认手机未静音，且已调大媒体音量。");
+            console.error(e);
+        });
+    }
+
+    function playVoice(type) { 
+        const s = database[currentScene].steps[currentStep]; 
+        // 对方提问用英音(true)，示范回答用美音(false)
+        speakCloud(type === 'ai' ? s.ai : s.target, type === 'ai'); 
+    }
+
     function handleMic(mode, idx = null) {
-        if(!SpeechRec) return alert("浏览器不支持");
+        if(!SpeechRec) return alert("浏览器不支持识别，请在手机自带浏览器或Chrome打开");
         const r = new SpeechRec(); r.lang = 'en-US';
         const btn = mode === 'prep' ? document.getElementById(`prepBtn_${idx}`) : document.getElementById('recBtnChallenge');
         const box = mode === 'prep' ? document.getElementById(`prepScore_${idx}`) : document.getElementById('challengeScore');
+        
         r.onstart = () => { btn.classList.add('recording-active'); btn.innerText = "在听..."; };
         r.onresult = (e) => {
             const t = e.results[0][0].transcript.toLowerCase();
@@ -192,11 +220,13 @@
         r.onend = () => { btn.classList.remove('recording-active'); btn.innerText = mode === 'prep' ? "🎤 评分" : "🎤 点击开始说话"; };
         r.start();
     }
+
     function nextStep() {
         currentStep++;
         if(currentStep < database[currentScene].steps.length) renderChallenge();
         else { document.getElementById('progressFill').style.width = "100%"; document.getElementById('challengeSection').classList.remove('active'); document.getElementById('finishUI').style.display = 'block'; }
     }
+    
     window.onload = initApp;
 </script>
 </body>
