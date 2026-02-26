@@ -18,6 +18,7 @@
         .brand-header { text-align: center; padding: 10px 0 20px 0; }
         .brand-title { font-size: 28px; font-weight: 900; color: var(--primary); margin: 0; letter-spacing: 1px; text-shadow: 2px 2px 0px white; }
         .brand-subtitle { font-size: 14px; color: #747d8c; margin-top: 5px; font-weight: 600; }
+        #envWarning { background: #FCE8E6; color: #D93025; padding: 12px; border-radius: 12px; font-size: 12px; font-weight: bold; text-align: center; margin-bottom: 15px; border: 1px solid #FAD2CF; display: none; }
         .header {
             background: var(--glass); backdrop-filter: blur(15px); padding: 20px; border-radius: 28px;
             box-shadow: var(--shadow); margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.4);
@@ -42,7 +43,7 @@
         .ai-zone { background: #F0F7FF; padding: 20px; border-radius: 24px 24px 24px 6px; margin-bottom: 20px; border: 1px solid #D1E9FF; }
         .user-zone { background: #FFFBF0; padding: 20px; border-radius: 24px; border: 2.5px dashed #FFEAA7; margin-bottom: 20px; }
         .btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
-        .btn-sm { border: none; padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .btn-sm { border: none; padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .btn-listen { background: #FFEBEB; color: var(--danger); }
         .btn-rec-sm { background: #E6F4EA; color: var(--secondary); }
         .btn-primary-action {
@@ -70,6 +71,9 @@
         <h1 class="brand-title">🌍 学好英语走天下</h1>
         <div class="brand-subtitle">让你的闺蜜学好英语，带你走遍天下</div>
     </div>
+    
+    <div id="envWarning">⚠️ 警告：当前 App（如微信）禁用了麦克风权限！请点击右上角，选择在 Safari 或浏览器中打开本网页。</div>
+
     <div class="header">
         <select id="sceneSelector" onchange="initApp()">
             <option value="0">📍 Scene 1: 问路与导览 (Directions)</option>
@@ -142,25 +146,15 @@
     ];
 
     let currentScene = 0, currentStep = 0;
-    const synth = window.speechSynthesis;
+    const globalAudioPlayer = new Audio();
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let isAudioUnlocked = false;
-
-    // 核心修复点 1：静默激活系统 (解决 iOS 必须用户点击才能发声的安全限制)
-    function unlockAudio() {
-        if(isAudioUnlocked || !synth) return;
-        let u = new SpeechSynthesisUtterance('');
-        u.volume = 0; // 无声播放，仅为唤醒引擎
-        synth.speak(u);
-        isAudioUnlocked = true;
-        document.body.removeEventListener('touchstart', unlockAudio);
-        document.body.removeEventListener('click', unlockAudio);
-    }
-    // 监听用户在页面上的第一次点击或触摸
-    document.body.addEventListener('touchstart', unlockAudio);
-    document.body.addEventListener('click', unlockAudio);
 
     function initApp() {
+        // 检查环境，如果没有麦克风权限，直接显示红字警告
+        if(!SpeechRec) {
+            document.getElementById('envWarning').style.display = 'block';
+        }
+
         currentScene = document.getElementById('sceneSelector').value; currentStep = 0;
         document.getElementById('finishUI').style.display = 'none';
         document.getElementById('prepSection').classList.add('active');
@@ -194,16 +188,24 @@
         document.getElementById('challengeSection').classList.toggle('active', m === 'challenge');
     }
 
-    // 核心修复点 2：纯净的本地发音逻辑，抛弃不稳定的外部 API
-    function playText(text, isBritish) {
-        if(!synth) return alert("您的浏览器不支持语音功能");
+    // 终极抗干扰播放逻辑：云端主导 + 强制时间戳破除缓存
+    function playText(text, isBritish = false) {
+        const cleanText = text.replace(/[^a-zA-Z0-9\s\,\.\?\!\'-]/g, '').replace(/\s+/g, ' ').trim(); 
+        const accentType = isBritish ? 1 : 2; 
+        const url = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(cleanText)}&type=${accentType}&_t=${Date.now()}`;
         
-        synth.cancel(); // 播放新句子前，强制停止可能卡住的旧句子
-        
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = isBritish ? 'en-GB' : 'en-US';
-        u.rate = 0.85; // 稍微放慢语速，适合学习
-        synth.speak(u);
+        globalAudioPlayer.src = url;
+        globalAudioPlayer.play().catch(e => {
+            // 如果云端被限制，尝试系统本地发声（如果被阉割则忽略）
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                let u = new SpeechSynthesisUtterance(cleanText);
+                u.lang = isBritish ? 'en-GB' : 'en-US';
+                window.speechSynthesis.speak(u);
+            } else {
+                alert("当前环境不支持播放语音，请换用 Safari 或 Chrome 浏览器！");
+            }
+        });
     }
 
     function playVoice(type) { 
@@ -212,7 +214,11 @@
     }
 
     function handleMic(mode, idx = null) {
-        if(!SpeechRec) return alert("您的浏览器不支持语音识别，推荐使用 Chrome 或 Safari");
+        if(!SpeechRec) {
+            alert("识别引擎被当前 App (如微信) 禁用。\n\n解决办法：请点击右上角菜单，选择在 Safari 或自带浏览器中打开！");
+            return;
+        }
+
         const r = new SpeechRec(); 
         r.lang = 'en-US';
         
