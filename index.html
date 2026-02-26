@@ -86,7 +86,7 @@
     </div>
     <div class="main-card">
         <div id="prepSection" class="content-section active">
-            <p style="font-size: 12px; color: #a4b0be; font-weight: 800; margin-bottom: 20px;">点击喇叭听云端发音，点击话筒练习：</p>
+            <p style="font-size: 12px; color: #a4b0be; font-weight: 800; margin-bottom: 20px;">点击麦克风练习并获取评分：</p>
             <div id="prepList"></div>
         </div>
         <div id="challengeSection" class="content-section">
@@ -140,32 +140,25 @@
             steps: [{ai:"Where are you flying?",aiCN:"您飞往哪里？",target:"To London. I have a bag to check.",targetCN:"去伦敦，托运行李。",keys:["london"]},{ai:"Window or aisle seat?",aiCN:"靠窗还是过道？",target:"Window seat, please.",targetCN:"靠窗位，谢谢。",keys:["window"]},{ai:"Gate 12. Have a nice flight!",aiCN:"12号登机口。旅途愉快！",target:"Thank you. Where is gate 12?",targetCN:"谢谢，12号登机口在哪？",keys:["gate"]}]
         }
     ];
-
     let currentScene = 0, currentStep = 0;
-    
-    // 【核心改动】：使用全局 Audio 对象，调用有道云网络发音接口
     const globalAudioPlayer = new Audio();
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     function initApp() {
-        currentScene = document.getElementById('sceneSelector').value; 
-        currentStep = 0;
+        currentScene = document.getElementById('sceneSelector').value; currentStep = 0;
         document.getElementById('finishUI').style.display = 'none';
         document.getElementById('prepSection').classList.add('active');
         document.getElementById('challengeSection').classList.remove('active');
         renderPrep(); renderChallenge();
     }
-
     function renderPrep() {
         const list = document.getElementById('prepList'); list.innerHTML = '';
         database[currentScene].prep.forEach((item, idx) => {
             const div = document.createElement('div'); div.className = 'phrase-item';
-            // 注意：预习发音传 false（使用美音）
             div.innerHTML = `<div class="phrase-main">${item.en}</div><div class="phrase-sub">${item.cn}</div><div class="btn-group"><button class="btn-sm btn-listen" onclick="speakCloud('${item.en}', false)">🔊 示范</button><button id="prepBtn_${idx}" class="btn-sm btn-rec-sm" onclick="handleMic('prep', ${idx})">🎤 评分</button></div><div id="prepScore_${idx}" class="score-box"></div>`;
             list.appendChild(div);
         });
     }
-
     function renderChallenge() {
         const step = database[currentScene].steps[currentStep];
         document.getElementById('stepInfo').innerText = `STAGE ${currentStep + 1} / ${database[currentScene].steps.length}`;
@@ -175,38 +168,23 @@
         document.getElementById('nextBtn').style.display = 'none'; document.getElementById('recBtnChallenge').style.display = 'block';
         document.getElementById('progressFill').style.width = (currentStep / database[currentScene].steps.length * 100) + "%";
     }
-
     function switchMode(m) {
         document.getElementById('tabPrep').classList.toggle('active', m === 'prep');
         document.getElementById('tabChallenge').classList.toggle('active', m === 'challenge');
         document.getElementById('prepSection').classList.toggle('active', m === 'prep');
         document.getElementById('challengeSection').classList.toggle('active', m === 'challenge');
     }
-
-    // 【全新云端发音函数】绕过手机限制
     function speakCloud(text, isBritish = false) {
-        // type=1是英音，type=2是美音
         const accentType = isBritish ? 1 : 2; 
-        const url = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&type=${accentType}`;
-        globalAudioPlayer.src = url;
-        globalAudioPlayer.play().catch(e => {
-            alert("声音被拦截：请确认手机未静音，且已调大媒体音量。");
-            console.error(e);
-        });
+        globalAudioPlayer.src = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&type=${accentType}`;
+        globalAudioPlayer.play().catch(e => console.error(e));
     }
-
-    function playVoice(type) { 
-        const s = database[currentScene].steps[currentStep]; 
-        // 对方提问用英音(true)，示范回答用美音(false)
-        speakCloud(type === 'ai' ? s.ai : s.target, type === 'ai'); 
-    }
-
+    function playVoice(type) { const s = database[currentScene].steps[currentStep]; speakCloud(type === 'ai' ? s.ai : s.target, type === 'ai'); }
     function handleMic(mode, idx = null) {
-        if(!SpeechRec) return alert("浏览器不支持识别，请在手机自带浏览器或Chrome打开");
+        if(!SpeechRec) return alert("浏览器不支持识别");
         const r = new SpeechRec(); r.lang = 'en-US';
         const btn = mode === 'prep' ? document.getElementById(`prepBtn_${idx}`) : document.getElementById('recBtnChallenge');
         const box = mode === 'prep' ? document.getElementById(`prepScore_${idx}`) : document.getElementById('challengeScore');
-        
         r.onstart = () => { btn.classList.add('recording-active'); btn.innerText = "在听..."; };
         r.onresult = (e) => {
             const t = e.results[0][0].transcript.toLowerCase();
@@ -220,13 +198,11 @@
         r.onend = () => { btn.classList.remove('recording-active'); btn.innerText = mode === 'prep' ? "🎤 评分" : "🎤 点击开始说话"; };
         r.start();
     }
-
     function nextStep() {
         currentStep++;
         if(currentStep < database[currentScene].steps.length) renderChallenge();
         else { document.getElementById('progressFill').style.width = "100%"; document.getElementById('challengeSection').classList.remove('active'); document.getElementById('finishUI').style.display = 'block'; }
     }
-    
     window.onload = initApp;
 </script>
 </body>
