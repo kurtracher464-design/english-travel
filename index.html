@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>学好英语走天下 | 闺蜜带路神器</title>
+    <style>
+        :root {
+            --primary: #4A90E2; --secondary: #67C23A; --warning: #F6B93B; --danger: #E55039;
+            --dark: #2F3542; --light-bg: #F1F2F6; --glass: rgba(255, 255, 255, 0.95); --shadow: 0 12px 40px rgba(0,0,0,0.12);
+        }
+        body {
+            font-family: 'PingFang SC', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: var(--light-bg); background-image: radial-gradient(#ced6e0 0.8px, transparent 0.8px);
+            background-size: 24px 24px; color: var(--dark); margin: 0; padding: 15px; -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 500px; margin: 0 auto; }
+        .brand-header { text-align: center; padding: 10px 0 20px 0; }
+        .brand-title { font-size: 28px; font-weight: 900; color: var(--primary); margin: 0; letter-spacing: 1px; text-shadow: 2px 2px 0px white; }
+        .brand-subtitle { font-size: 14px; color: #747d8c; margin-top: 5px; font-weight: 600; }
+        .header {
+            background: var(--glass); backdrop-filter: blur(15px); padding: 20px; border-radius: 28px;
+            box-shadow: var(--shadow); margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.4);
+        }
+        select {
+            width: 100%; padding: 14px 18px; border-radius: 16px; border: 2px solid #E4E7ED;
+            font-size: 16px; font-weight: 700; appearance: none;
+            background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%234a90e2' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 15px center;
+        }
+        .progress-bar { height: 10px; background: #E4E7ED; border-radius: 20px; margin-top: 15px; overflow: hidden; }
+        #progressFill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary)); width: 0%; transition: 0.8s ease; }
+        .tabs { display: flex; gap: 12px; margin-bottom: 20px; background: #E4E7ED; padding: 6px; border-radius: 20px; }
+        .tab { flex: 1; padding: 12px; text-align: center; border-radius: 16px; cursor: pointer; font-weight: 800; color: #747d8c; }
+        .tab.active { background: white; color: var(--primary); box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        .main-card { background: white; border-radius: 35px; padding: 25px; box-shadow: var(--shadow); min-height: 580px; position: relative; }
+        .content-section { display: none; }
+        .content-section.active { display: block; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .phrase-item { background: #F8F9FA; padding: 18px; border-radius: 24px; margin-bottom: 15px; border: 1px solid #EDF1F7; }
+        .phrase-main { font-size: 17px; font-weight: 800; color: var(--primary); margin-bottom: 5px; }
+        .phrase-sub { font-size: 14px; color: #95a5a6; margin-bottom: 12px; }
+        .ai-zone { background: #F0F7FF; padding: 20px; border-radius: 24px 24px 24px 6px; margin-bottom: 20px; border: 1px solid #D1E9FF; }
+        .user-zone { background: #FFFBF0; padding: 20px; border-radius: 24px; border: 2.5px dashed #FFEAA7; margin-bottom: 20px; }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
+        .btn-sm { border: none; padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .btn-listen { background: #FFEBEB; color: var(--danger); }
+        .btn-rec-sm { background: #E6F4EA; color: var(--secondary); }
+        .btn-primary-action {
+            width: 100%; border: none; padding: 20px; border-radius: 22px; font-weight: 800; font-size: 18px;
+            cursor: pointer; background: linear-gradient(135deg, #67C23A, #2ed573); color: white;
+            box-shadow: 0 8px 25px rgba(103, 194, 58, 0.3); margin-top: 10px;
+        }
+        .btn-next-step {
+            width: 100%; background: linear-gradient(135deg, var(--primary), #3a7bd5); color: white;
+            padding: 20px; border-radius: 22px; border: none; font-weight: 800; font-size: 18px;
+            margin-top: 10px; display: none; box-shadow: 0 8px 25px rgba(74, 144, 226, 0.3);
+            cursor: pointer; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .recording-active { background: var(--dark) !important; color: white !important; animation: breathe 1.5s infinite; }
+        @keyframes breathe { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+        .score-box { padding: 15px; border-radius: 18px; text-align: center; font-weight: 800; margin: 10px 0; font-size: 14px; display: none; }
+        .success-msg { background: #E6F4EA; color: #1E8E3E; border: 1px solid #B7E1CD; }
+        .error-msg { background: #FCE8E6; color: #D93025; border: 1px solid #FAD2CF; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="brand-header">
+        <h1 class="brand-title">🌍 学好英语走天下</h1>
+        <div class="brand-subtitle">让你的闺蜜学好英语，带你走遍天下</div>
+    </div>
+    <div class="header">
+        <select id="sceneSelector" onchange="initApp()">
+            <option value="0">📍 Scene 1: 问路与导览 (Directions)</option>
+            <option value="1">🍽️ Scene 2: 餐厅点餐 (Dining)</option>
+            <option value="2">🏨 Scene 3: 酒店办理 (Hotel)</option>
+            <option value="3">🛍️ Scene 4: 购物退税 (Shopping)</option>
+            <option value="4">✈️ Scene 5: 机场过关 (Airport)</option>
+        </select>
+        <div class="progress-bar"><div id="progressFill"></div></div>
+    </div>
+    <div class="tabs">
+        <div id="tabPrep" class="tab active" onclick="switchMode('prep')">基础跟读评分</div>
+        <div id="tabChallenge" class="tab" onclick="switchMode('challenge')">实战场景演练</div>
+    </div>
+    <div class="main-card">
+        <div id="prepSection" class="content-section active">
+            <p style="font-size: 12px; color: #a4b0be; font-weight: 800; margin-bottom: 20px;">点击麦克风练习并获取评分：</p>
+            <div id="prepList"></div>
+        </div>
+        <div id="challengeSection" class="content-section">
+            <div id="stepInfo" style="font-size: 11px; color: #A4B0BE; font-weight: 900; margin-bottom: 15px; letter-spacing: 1px;">STAGE 1 / 3</div>
+            <div class="ai-zone">
+                <div id="aiText" style="font-size: 18px; font-weight: 700; color: var(--dark);">...</div>
+                <div id="aiCN" style="font-size: 14px; color: #7f8c8d; margin-top: 8px; font-style: italic;">...</div>
+            </div>
+            <div class="user-zone">
+                <div style="color: #B89130; font-size: 11px; font-weight: 900; margin-bottom: 8px;">你的对话：</div>
+                <div id="targetText" style="font-size: 19px; font-weight: 800; color: #2C3E50;">...</div>
+                <div id="targetCN" style="font-size: 14px; color: #B89130; margin-top: 8px;">...</div>
+            </div>
+            <div id="challengeScore" class="score-box"></div>
+            <div class="btn-group" style="margin-top: 20px;">
+                <button class="btn-sm btn-listen" style="flex:1; padding: 15px" onclick="playVoice('ai')">🔊 听提问</button>
+                <button class="btn-sm btn-rec-sm" style="flex:1; padding: 15px; background: #FFF4E5; color: #F6B93B;" onclick="playVoice('target')">💡 听示范</button>
+            </div>
+            <button id="recBtnChallenge" class="btn-primary-action" onclick="handleMic('challenge')">🎤 点击开始说话</button>
+            <button id="nextBtn" class="btn-next-step" onclick="nextStep()">✅ 完美！进入下一步 ➔</button>
+            <button style="width:100%; background:none; border:none; color:#A4B0BE; font-size:12px; margin-top:20px; text-decoration:underline; cursor:pointer;" onclick="nextStep()">暂时跳过</button>
+        </div>
+        <div id="finishUI" style="display:none; text-align:center; padding-top:60px;">
+            <div style="font-size: 80px; margin-bottom: 20px;">🎖️</div>
+            <h2 style="color:var(--secondary); font-size: 30px; font-weight: 900;">完美通关!</h2>
+            <p style="color:#747d8c; margin-bottom: 40px;">快去带上你的闺蜜，出发吧！</p>
+            <button class="btn-primary-action" onclick="initApp()">重新练习</button>
+        </div>
+    </div>
+</div>
+<script>
+    const database = [
+        { // Scene 1
+            prep: [{en:"Excuse me, where is the restroom?",cn:"洗手间在哪里？",key:"restroom"},{en:"How do I get to the museum?",cn:"去博物馆怎么走？",key:"museum"},{en:"Is it far from here?",cn:"离这儿远吗？",key:"far"}],
+            steps: [{ai:"Welcome! Looking for a specific gallery?",aiCN:"欢迎！在找展厅吗？",target:"Excuse me, where is the restroom?",targetCN:"洗手间在哪？",keys:["restroom"]},{ai:"Near the exit. Need a map?",aiCN:"出口附近。要地图吗？",target:"Yes, and how do I get to the cafe?",targetCN:"去咖啡馆怎么走？",keys:["cafe"]},{ai:"Straight for two blocks.",aiCN:"直走两个街区。",target:"Thank you for your help!",targetCN:"谢谢你的帮助！",keys:["thank"]}]
+        },
+        { // Scene 2
+            prep: [{en:"A table for two, please.",cn:"请给两人位。",key:"table"},{en:"Can I see the menu?",cn:"能看菜单吗？",key:"menu"},{en:"Check, please.",cn:"请结账。",key:"check"}],
+            steps: [{ai:"Do you have a reservation?",aiCN:"有预约吗？",target:"No, a table for two, please.",targetCN:"没有，两人位谢谢。",keys:["table"]},{ai:"Ready to order?",aiCN:"准备好点餐了吗？",target:"I'll have the grilled salmon.",targetCN:"我要一份煎三文鱼。",keys:["salmon"]},{ai:"Anything else?",aiCN:"还要别的吗？",target:"No, that's all. Check, please.",targetCN:"就这些，结账。",keys:["check"]}]
+        },
+        { // Scene 3
+            prep: [{en:"I'd like to check in, please.",cn:"我想办理入住。",key:"check"},{en:"Is breakfast included?",cn:"含早餐吗？",key:"breakfast"},{en:"What's the Wi-Fi password?",cn:"Wi-Fi密码是多少？",key:"password"}],
+            steps: [{ai:"May I have your passport?",aiCN:"请给我护照好吗？",target:"Here it is. I'd like to check in.",targetCN:"给你，办入住。",keys:["check"]},{ai:"Room 502. Here is your key.",aiCN:"502房。这是钥匙。",target:"Thanks. Is breakfast included?",targetCN:"含早餐吗？",keys:["breakfast"]},{ai:"Yes, 7 to 10 AM.",aiCN:"是的，7点到10点。",target:"What's the Wi-Fi password?",targetCN:"Wi-Fi密码是多少？",keys:["password"]}]
+        },
+        { // Scene 4
+            prep: [{en:"How much is this?",cn:"这个多少钱？",key:"much"},{en:"Do you have a smaller size?",cn:"有小一号吗？",key:"smaller"},{en:"Can I get a tax refund?",cn:"能退税吗？",key:"tax"}],
+            steps: [{ai:"Can I help you find anything?",aiCN:"需要帮您找什么吗？",target:"I am looking for a gift.",targetCN:"我在挑一件礼物。",keys:["looking"]},{ai:"This is 200 dollars.",aiCN:"这个200美金。",target:"It's nice. Can I get a tax refund?",targetCN:"能退税吗？",keys:["tax"]},{ai:"Yes, anything else?",aiCN:"可以的，还要别的吗？",target:"No, I'll take this one.",targetCN:"不，我要这个。",keys:["take"]}]
+        },
+        { // Scene 5
+            prep: [{en:"Where is the check-in counter?",cn:"值机柜台在哪？",key:"counter"},{en:"I have a bag to check.",cn:"我有行李托运。",key:"check"},{en:"Is my flight on time?",cn:"航班准点吗？",key:"time"}],
+            steps: [{ai:"Where are you flying?",aiCN:"您飞往哪里？",target:"To London. I have a bag to check.",targetCN:"去伦敦，托运行李。",keys:["london"]},{ai:"Window or aisle seat?",aiCN:"靠窗还是过道？",target:"Window seat, please.",targetCN:"靠窗位，谢谢。",keys:["window"]},{ai:"Gate 12. Have a nice flight!",aiCN:"12号登机口。旅途愉快！",target:"Thank you. Where is gate 12?",targetCN:"谢谢，12号登机口在哪？",keys:["gate"]}]
+        }
+    ];
+    let currentScene = 0, currentStep = 0;
+    const synth = window.speechSynthesis, SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    function initApp() {
+        currentScene = document.getElementById('sceneSelector').value; currentStep = 0;
+        document.getElementById('finishUI').style.display = 'none';
+        document.getElementById('prepSection').classList.add('active');
+        document.getElementById('challengeSection').classList.remove('active');
+        renderPrep(); renderChallenge();
+    }
+    function renderPrep() {
+        const list = document.getElementById('prepList'); list.innerHTML = '';
+        database[currentScene].prep.forEach((item, idx) => {
+            const div = document.createElement('div'); div.className = 'phrase-item';
+            div.innerHTML = `<div class="phrase-main">${item.en}</div><div class="phrase-sub">${item.cn}</div><div class="btn-group"><button class="btn-sm btn-listen" onclick="speakSingle('${item.en}')">🔊 示范</button><button id="prepBtn_${idx}" class="btn-sm btn-rec-sm" onclick="handleMic('prep', ${idx})">🎤 评分</button></div><div id="prepScore_${idx}" class="score-box"></div>`;
+            list.appendChild(div);
+        });
+    }
+    function renderChallenge() {
+        const step = database[currentScene].steps[currentStep];
+        document.getElementById('stepInfo').innerText = `STAGE ${currentStep + 1} / ${database[currentScene].steps.length}`;
+        document.getElementById('aiText').innerText = step.ai; document.getElementById('aiCN').innerText = step.aiCN;
+        document.getElementById('targetText').innerText = step.target; document.getElementById('targetCN').innerText = step.targetCN;
+        document.getElementById('challengeScore').style.display = 'none';
+        document.getElementById('nextBtn').style.display = 'none'; document.getElementById('recBtnChallenge').style.display = 'block';
+        document.getElementById('progressFill').style.width = (currentStep / database[currentScene].steps.length * 100) + "%";
+    }
+    function switchMode(m) {
+        document.getElementById('tabPrep').classList.toggle('active', m === 'prep');
+        document.getElementById('tabChallenge').classList.toggle('active', m === 'challenge');
+        document.getElementById('prepSection').classList.toggle('active', m === 'prep');
+        document.getElementById('challengeSection').classList.toggle('active', m === 'challenge');
+    }
+    function speakSingle(text) { synth.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; u.rate = 0.8; synth.speak(u); }
+    function playVoice(type) { const s = database[currentScene].steps[currentStep]; speakSingle(type === 'ai' ? s.ai : s.target); }
+    function handleMic(mode, idx = null) {
+        if(!SpeechRec) return alert("浏览器不支持");
+        const r = new SpeechRec(); r.lang = 'en-US';
+        const btn = mode === 'prep' ? document.getElementById(`prepBtn_${idx}`) : document.getElementById('recBtnChallenge');
+        const box = mode === 'prep' ? document.getElementById(`prepScore_${idx}`) : document.getElementById('challengeScore');
+        r.onstart = () => { btn.classList.add('recording-active'); btn.innerText = "在听..."; };
+        r.onresult = (e) => {
+            const t = e.results[0][0].transcript.toLowerCase();
+            const match = mode === 'prep' ? t.includes(database[currentScene].prep[idx].key) : database[currentScene].steps[currentStep].keys.some(k => t.includes(k));
+            box.style.display = 'block';
+            if(match) {
+                box.className = "score-box success-msg"; box.innerHTML = "✅ 识别成功!";
+                if(mode === 'challenge') { document.getElementById('recBtnChallenge').style.display = 'none'; document.getElementById('nextBtn').style.display = 'block'; }
+            } else { box.className = "score-box error-msg"; box.innerHTML = "❌ 请再试一次"; }
+        };
+        r.onend = () => { btn.classList.remove('recording-active'); btn.innerText = mode === 'prep' ? "🎤 评分" : "🎤 点击开始说话"; };
+        r.start();
+    }
+    function nextStep() {
+        currentStep++;
+        if(currentStep < database[currentScene].steps.length) renderChallenge();
+        else { document.getElementById('progressFill').style.width = "100%"; document.getElementById('challengeSection').classList.remove('active'); document.getElementById('finishUI').style.display = 'block'; }
+    }
+    window.onload = initApp;
+</script>
+</body>
+</html>
