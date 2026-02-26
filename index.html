@@ -142,9 +142,23 @@
     ];
 
     let currentScene = 0, currentStep = 0;
-    const globalAudioPlayer = new Audio();
     const synth = window.speechSynthesis;
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let isAudioUnlocked = false;
+
+    // 核心修复点 1：静默激活系统 (解决 iOS 必须用户点击才能发声的安全限制)
+    function unlockAudio() {
+        if(isAudioUnlocked || !synth) return;
+        let u = new SpeechSynthesisUtterance('');
+        u.volume = 0; // 无声播放，仅为唤醒引擎
+        synth.speak(u);
+        isAudioUnlocked = true;
+        document.body.removeEventListener('touchstart', unlockAudio);
+        document.body.removeEventListener('click', unlockAudio);
+    }
+    // 监听用户在页面上的第一次点击或触摸
+    document.body.addEventListener('touchstart', unlockAudio);
+    document.body.addEventListener('click', unlockAudio);
 
     function initApp() {
         currentScene = document.getElementById('sceneSelector').value; currentStep = 0;
@@ -158,7 +172,7 @@
         const list = document.getElementById('prepList'); list.innerHTML = '';
         database[currentScene].prep.forEach((item, idx) => {
             const div = document.createElement('div'); div.className = 'phrase-item';
-            div.innerHTML = `<div class="phrase-main">${item.en}</div><div class="phrase-sub">${item.cn}</div><div class="btn-group"><button class="btn-sm btn-listen" onclick="speakCloud('${item.en}', false)">🔊 示范</button><button id="prepBtn_${idx}" class="btn-sm btn-rec-sm" onclick="handleMic('prep', ${idx})">🎤 评分</button></div><div id="prepScore_${idx}" class="score-box"></div>`;
+            div.innerHTML = `<div class="phrase-main">${item.en}</div><div class="phrase-sub">${item.cn}</div><div class="btn-group"><button class="btn-sm btn-listen" onclick="playText('${item.en}', false)">🔊 示范</button><button id="prepBtn_${idx}" class="btn-sm btn-rec-sm" onclick="handleMic('prep', ${idx})">🎤 评分</button></div><div id="prepScore_${idx}" class="score-box"></div>`;
             list.appendChild(div);
         });
     }
@@ -180,54 +194,25 @@
         document.getElementById('challengeSection').classList.toggle('active', m === 'challenge');
     }
 
-    // 【全新升级双引擎发音系统】
-    function speakCloud(text, isBritish = false) {
-        globalAudioPlayer.pause();
-        if(synth) synth.cancel();
-
-        const accentType = isBritish ? 1 : 2; 
+    // 核心修复点 2：纯净的本地发音逻辑，抛弃不稳定的外部 API
+    function playText(text, isBritish) {
+        if(!synth) return alert("您的浏览器不支持语音功能");
         
-        // 核心修复点 1：深度过滤可能导致接口报错的任何特殊符号，只保留基础英文字母、数字和常规标点
-        const cleanText = text.replace(/[^a-zA-Z0-9\s\,\.\?\!\'-]/g, '').replace(/\s+/g, ' ').trim(); 
+        synth.cancel(); // 播放新句子前，强制停止可能卡住的旧句子
         
-        // 核心修复点 2：在链接后增加动态时间戳参数 (&_t=...)，强制浏览器每次重新请求，防止缓存死锁
-        globalAudioPlayer.src = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(cleanText)}&type=${accentType}&_t=${Date.now()}`;
-        
-        // 核心修复点 3：加载超时保护。如果接口超过 1.5 秒无响应，立刻切换本地引擎，确保不卡顿
-        let fallbackTimer = setTimeout(() => {
-            speakNative(cleanText, isBritish);
-        }, 1500);
-
-        globalAudioPlayer.onloadeddata = () => {
-            clearTimeout(fallbackTimer);
-        };
-
-        globalAudioPlayer.onerror = () => {
-            clearTimeout(fallbackTimer);
-            speakNative(cleanText, isBritish);
-        };
-        
-        globalAudioPlayer.play().catch(e => {
-            clearTimeout(fallbackTimer);
-            speakNative(cleanText, isBritish);
-        });
-    }
-
-    function speakNative(text, isBritish) {
-        if(!synth) return;
         const u = new SpeechSynthesisUtterance(text);
         u.lang = isBritish ? 'en-GB' : 'en-US';
-        u.rate = 0.85;
+        u.rate = 0.85; // 稍微放慢语速，适合学习
         synth.speak(u);
     }
 
     function playVoice(type) { 
         const s = database[currentScene].steps[currentStep]; 
-        speakCloud(type === 'ai' ? s.ai : s.target, type === 'ai'); 
+        playText(type === 'ai' ? s.ai : s.target, type === 'ai'); 
     }
 
     function handleMic(mode, idx = null) {
-        if(!SpeechRec) return alert("您的浏览器不支持语音识别，推荐使用 Chrome 或系统自带浏览器");
+        if(!SpeechRec) return alert("您的浏览器不支持语音识别，推荐使用 Chrome 或 Safari");
         const r = new SpeechRec(); 
         r.lang = 'en-US';
         
