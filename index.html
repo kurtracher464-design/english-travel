@@ -140,8 +140,10 @@
             steps: [{ai:"Where are you flying?",aiCN:"您飞往哪里？",target:"To London. I have a bag to check.",targetCN:"去伦敦，托运行李。",keys:["london"]},{ai:"Window or aisle seat?",aiCN:"靠窗还是过道？",target:"Window seat, please.",targetCN:"靠窗位，谢谢。",keys:["window"]},{ai:"Gate 12. Have a nice flight!",aiCN:"12号登机口。旅途愉快！",target:"Thank you. Where is gate 12?",targetCN:"谢谢，12号登机口在哪？",keys:["gate"]}]
         }
     ];
+
     let currentScene = 0, currentStep = 0;
     const globalAudioPlayer = new Audio();
+    const synth = window.speechSynthesis;
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     function initApp() {
@@ -151,6 +153,7 @@
         document.getElementById('challengeSection').classList.remove('active');
         renderPrep(); renderChallenge();
     }
+
     function renderPrep() {
         const list = document.getElementById('prepList'); list.innerHTML = '';
         database[currentScene].prep.forEach((item, idx) => {
@@ -159,6 +162,7 @@
             list.appendChild(div);
         });
     }
+
     function renderChallenge() {
         const step = database[currentScene].steps[currentStep];
         document.getElementById('stepInfo').innerText = `STAGE ${currentStep + 1} / ${database[currentScene].steps.length}`;
@@ -168,23 +172,49 @@
         document.getElementById('nextBtn').style.display = 'none'; document.getElementById('recBtnChallenge').style.display = 'block';
         document.getElementById('progressFill').style.width = (currentStep / database[currentScene].steps.length * 100) + "%";
     }
+
     function switchMode(m) {
         document.getElementById('tabPrep').classList.toggle('active', m === 'prep');
         document.getElementById('tabChallenge').classList.toggle('active', m === 'challenge');
         document.getElementById('prepSection').classList.toggle('active', m === 'prep');
         document.getElementById('challengeSection').classList.toggle('active', m === 'challenge');
     }
+
+    // 【全新双引擎发音系统】云端优先，本地兜底保护
     function speakCloud(text, isBritish = false) {
+        globalAudioPlayer.pause();
+        if(synth) synth.cancel();
+
         const accentType = isBritish ? 1 : 2; 
-        globalAudioPlayer.src = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&type=${accentType}`;
-        globalAudioPlayer.play().catch(e => console.error(e));
+        const cleanText = text.replace(/’/g, "'").replace(/[\r\n]+/g, " "); // 过滤可能导致云端报错的特殊字符
+        
+        globalAudioPlayer.src = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(cleanText)}&type=${accentType}`;
+        
+        // 如果云端接口罢工，瞬间无缝切换到手机本地发音
+        globalAudioPlayer.onerror = () => speakNative(cleanText, isBritish);
+        globalAudioPlayer.play().catch(e => speakNative(cleanText, isBritish));
     }
-    function playVoice(type) { const s = database[currentScene].steps[currentStep]; speakCloud(type === 'ai' ? s.ai : s.target, type === 'ai'); }
+
+    // 【本地备用引擎】
+    function speakNative(text, isBritish) {
+        if(!synth) return;
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = isBritish ? 'en-GB' : 'en-US';
+        u.rate = 0.85;
+        synth.speak(u);
+    }
+
+    function playVoice(type) { 
+        const s = database[currentScene].steps[currentStep]; 
+        speakCloud(type === 'ai' ? s.ai : s.target, type === 'ai'); 
+    }
+
     function handleMic(mode, idx = null) {
-        if(!SpeechRec) return alert("浏览器不支持识别");
+        if(!SpeechRec) return alert("您的浏览器不支持语音识别，推荐使用Chrome或系统自带浏览器");
         const r = new SpeechRec(); r.lang = 'en-US';
         const btn = mode === 'prep' ? document.getElementById(`prepBtn_${idx}`) : document.getElementById('recBtnChallenge');
         const box = mode === 'prep' ? document.getElementById(`prepScore_${idx}`) : document.getElementById('challengeScore');
+        
         r.onstart = () => { btn.classList.add('recording-active'); btn.innerText = "在听..."; };
         r.onresult = (e) => {
             const t = e.results[0][0].transcript.toLowerCase();
@@ -198,11 +228,13 @@
         r.onend = () => { btn.classList.remove('recording-active'); btn.innerText = mode === 'prep' ? "🎤 评分" : "🎤 点击开始说话"; };
         r.start();
     }
+
     function nextStep() {
         currentStep++;
         if(currentStep < database[currentScene].steps.length) renderChallenge();
         else { document.getElementById('progressFill').style.width = "100%"; document.getElementById('challengeSection').classList.remove('active'); document.getElementById('finishUI').style.display = 'block'; }
     }
+    
     window.onload = initApp;
 </script>
 </body>
