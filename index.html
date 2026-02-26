@@ -180,22 +180,39 @@
         document.getElementById('challengeSection').classList.toggle('active', m === 'challenge');
     }
 
-    // 【全新双引擎发音系统】云端优先，本地兜底保护
+    // 【全新升级双引擎发音系统】
     function speakCloud(text, isBritish = false) {
         globalAudioPlayer.pause();
         if(synth) synth.cancel();
 
         const accentType = isBritish ? 1 : 2; 
-        const cleanText = text.replace(/’/g, "'").replace(/[\r\n]+/g, " "); // 过滤可能导致云端报错的特殊字符
         
-        globalAudioPlayer.src = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(cleanText)}&type=${accentType}`;
+        // 核心修复点 1：深度过滤可能导致接口报错的任何特殊符号，只保留基础英文字母、数字和常规标点
+        const cleanText = text.replace(/[^a-zA-Z0-9\s\,\.\?\!\'-]/g, '').replace(/\s+/g, ' ').trim(); 
         
-        // 如果云端接口罢工，瞬间无缝切换到手机本地发音
-        globalAudioPlayer.onerror = () => speakNative(cleanText, isBritish);
-        globalAudioPlayer.play().catch(e => speakNative(cleanText, isBritish));
+        // 核心修复点 2：在链接后增加动态时间戳参数 (&_t=...)，强制浏览器每次重新请求，防止缓存死锁
+        globalAudioPlayer.src = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(cleanText)}&type=${accentType}&_t=${Date.now()}`;
+        
+        // 核心修复点 3：加载超时保护。如果接口超过 1.5 秒无响应，立刻切换本地引擎，确保不卡顿
+        let fallbackTimer = setTimeout(() => {
+            speakNative(cleanText, isBritish);
+        }, 1500);
+
+        globalAudioPlayer.onloadeddata = () => {
+            clearTimeout(fallbackTimer);
+        };
+
+        globalAudioPlayer.onerror = () => {
+            clearTimeout(fallbackTimer);
+            speakNative(cleanText, isBritish);
+        };
+        
+        globalAudioPlayer.play().catch(e => {
+            clearTimeout(fallbackTimer);
+            speakNative(cleanText, isBritish);
+        });
     }
 
-    // 【本地备用引擎】
     function speakNative(text, isBritish) {
         if(!synth) return;
         const u = new SpeechSynthesisUtterance(text);
@@ -210,29 +227,50 @@
     }
 
     function handleMic(mode, idx = null) {
-        if(!SpeechRec) return alert("您的浏览器不支持语音识别，推荐使用Chrome或系统自带浏览器");
-        const r = new SpeechRec(); r.lang = 'en-US';
+        if(!SpeechRec) return alert("您的浏览器不支持语音识别，推荐使用 Chrome 或系统自带浏览器");
+        const r = new SpeechRec(); 
+        r.lang = 'en-US';
+        
         const btn = mode === 'prep' ? document.getElementById(`prepBtn_${idx}`) : document.getElementById('recBtnChallenge');
         const box = mode === 'prep' ? document.getElementById(`prepScore_${idx}`) : document.getElementById('challengeScore');
         
         r.onstart = () => { btn.classList.add('recording-active'); btn.innerText = "在听..."; };
+        
         r.onresult = (e) => {
             const t = e.results[0][0].transcript.toLowerCase();
             const match = mode === 'prep' ? t.includes(database[currentScene].prep[idx].key) : database[currentScene].steps[currentStep].keys.some(k => t.includes(k));
+            
             box.style.display = 'block';
             if(match) {
-                box.className = "score-box success-msg"; box.innerHTML = "✅ 识别成功!";
-                if(mode === 'challenge') { document.getElementById('recBtnChallenge').style.display = 'none'; document.getElementById('nextBtn').style.display = 'block'; }
-            } else { box.className = "score-box error-msg"; box.innerHTML = "❌ 请再试一次"; }
+                box.className = "score-box success-msg"; 
+                box.innerHTML = "✅ 识别成功!";
+                if(mode === 'challenge') { 
+                    document.getElementById('recBtnChallenge').style.display = 'none'; 
+                    document.getElementById('nextBtn').style.display = 'block'; 
+                }
+            } else { 
+                box.className = "score-box error-msg"; 
+                box.innerHTML = "❌ 请再试一次"; 
+            }
         };
-        r.onend = () => { btn.classList.remove('recording-active'); btn.innerText = mode === 'prep' ? "🎤 评分" : "🎤 点击开始说话"; };
+        
+        r.onend = () => { 
+            btn.classList.remove('recording-active'); 
+            btn.innerText = mode === 'prep' ? "🎤 评分" : "🎤 点击开始说话"; 
+        };
+        
         r.start();
     }
 
     function nextStep() {
         currentStep++;
-        if(currentStep < database[currentScene].steps.length) renderChallenge();
-        else { document.getElementById('progressFill').style.width = "100%"; document.getElementById('challengeSection').classList.remove('active'); document.getElementById('finishUI').style.display = 'block'; }
+        if(currentStep < database[currentScene].steps.length) {
+            renderChallenge();
+        } else { 
+            document.getElementById('progressFill').style.width = "100%"; 
+            document.getElementById('challengeSection').classList.remove('active'); 
+            document.getElementById('finishUI').style.display = 'block'; 
+        }
     }
     
     window.onload = initApp;
